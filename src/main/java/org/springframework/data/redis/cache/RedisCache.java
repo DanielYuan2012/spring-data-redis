@@ -15,7 +15,6 @@
  */
 package org.springframework.data.redis.cache;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.concurrent.Callable;
@@ -29,7 +28,6 @@ import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
-import org.springframework.util.ReflectionUtils;
 
 /**
  * {@link org.springframework.cache.Cache} implementation using for Redis as underlying store.
@@ -39,22 +37,12 @@ import org.springframework.util.ReflectionUtils;
  */
 public class RedisCache extends AbstractValueAdaptingCache {
 
-	private static final NullValue NULL_VALUE;
-	private static final byte[] BINARY_NULL_VALUE;
+	private static final byte[] BINARY_NULL_VALUE = new JdkSerializationRedisSerializer().serialize(NullValue.INSTANCE);
 
 	private final String name;
 	private final RedisCacheWriter cacheWriter;
 	private final RedisCacheConfiguration cacheConfig;
 	private final ConfigurableConversionService conversionService = new DefaultFormattingConversionService();
-
-	static {
-
-		Field field = ReflectionUtils.findField(NullValue.class, "INSTANCE");
-		ReflectionUtils.makeAccessible(field);
-		NULL_VALUE = NullValue.class.cast(ReflectionUtils.getField(field, null));
-
-		BINARY_NULL_VALUE = new JdkSerializationRedisSerializer().serialize(NULL_VALUE);
-	}
 
 	/**
 	 * Create new {@link RedisCache}.
@@ -183,7 +171,7 @@ public class RedisCache extends AbstractValueAdaptingCache {
 			return value;
 		}
 
-		return isAllowNullValues() ? NULL_VALUE : null;
+		return isAllowNullValues() ? NullValue.INSTANCE : null;
 	}
 
 	/**
@@ -221,7 +209,7 @@ public class RedisCache extends AbstractValueAdaptingCache {
 	protected Object deserializeCacheValue(byte[] value) {
 
 		if (isAllowNullValues() && ObjectUtils.nullSafeEquals(value, BINARY_NULL_VALUE)) {
-			return NULL_VALUE;
+			return NullValue.INSTANCE;
 		}
 
 		return cacheConfig.getValueSerializationPair().read(ByteBuffer.wrap(value));
